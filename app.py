@@ -15,7 +15,7 @@ import time
 # 1. PAGE CONFIG & SESSION STATE
 # ============================================================
 
-st.set_page_config(page_title="92Y Career Auto-Pilot", page_icon="ðŸŽ–ï¸", layout="wide")
+st.set_page_config(page_title="92Y Career Auto-Pilot", page_icon="*", layout="wide")
 
 STATE_DEFAULTS = {
     "model": None,
@@ -575,12 +575,12 @@ def validate_inputs(api_key, job_desc, target_title):
 # 9. UI LAYOUT
 # ============================================================
 
-st.title("ðŸŽ–ï¸ 92Y Career Auto-Pilot")
+st.title("92Y Career Auto-Pilot")
 st.markdown("##### Military-to-Civilian Resume Engine with ATS Keyword Matching")
 
 # Sidebar
 with st.sidebar:
-    st.header("ðŸ”‘ Authorization")
+    st.header("Authorization")
     default_key = ""
     try:
         default_key = st.secrets.get("GOOGLE_API_KEY", "")
@@ -610,7 +610,7 @@ with st.sidebar:
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("ðŸ“‚ Your Profile")
+    st.subheader("Your Profile")
     c1, c2 = st.columns(2)
     with c1:
         rank = st.selectbox("Rank", ["E-4 (SPC)", "E-5 (SGT)", "E-6 (SSG)", "E-7 (SFC)", "E-8 (MSG)"])
@@ -618,7 +618,7 @@ with col1:
         years = st.number_input("Years of Service", 1, 30, 9)
 
     input_tab1, input_tab2, input_tab3 = st.tabs(
-        ["ðŸ“„ Upload Resume", "âœï¸ Paste Bullets", "âœ¨ Generate from Scratch"]
+        ["Upload Resume", "Paste Bullets", "Generate from Scratch"]
     )
     user_data = ""
     with input_tab1:
@@ -647,7 +647,7 @@ with col1:
         )
 
 with col2:
-    st.subheader("ðŸŽ¯ Target Position")
+    st.subheader("Target Position")
     target_ind = st.selectbox(
         "Target Industry",
         ["Corporate (General)", "Defense Contractor", "Federal (USAJOBS)", "Tech / SaaS"],
@@ -666,7 +666,7 @@ with col2:
 
 st.divider()
 
-if st.button("ðŸ” Step 1: Extract JD Keywords", type="secondary"):
+if st.button("Step 1: Extract JD Keywords", type="secondary"):
     err = validate_inputs(api_key, job_desc, target_title)
     if err:
         st.warning(err)
@@ -706,14 +706,14 @@ if st.session_state.keywords and not st.session_state.keywords_confirmed:
 
     kc1, kc2 = st.columns(2)
     with kc1:
-        if st.button("âœ… Confirm Keywords & Generate", type="primary"):
+        if st.button("Confirm Keywords & Generate", type="primary"):
             if add_kw.strip():
                 edited.append(add_kw.strip())
             st.session_state.keywords = edited
             st.session_state.keywords_confirmed = True
             st.rerun()
     with kc2:
-        if st.button("ðŸ”„ Re-extract"):
+        if st.button("Re-extract"):
             st.session_state.keywords = None
             st.rerun()
 
@@ -768,7 +768,7 @@ if st.session_state.generation_complete:
     st.divider()
     st.subheader("Your Career Package")
 
-    tab1, tab2, tab3 = st.tabs(["ðŸ“„ Resume", "âœ‰ï¸ Cover Letter", "ðŸŽ¤ Interview Prep"])
+    tab1, tab2, tab3 = st.tabs(["Resume", "Cover Letter", "Interview Prep"])
 
     with tab1:
         st.markdown(st.session_state.resume_md)
@@ -776,13 +776,13 @@ if st.session_state.generation_complete:
         dc1, dc2 = st.columns(2)
         with dc1:
             st.download_button(
-                "â¬‡ï¸ Download Resume (.docx)",
+                "Download Resume (.docx)",
                 data=resume_docx,
                 file_name=f"Resume_{target_title.replace(' ', '_')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
         with dc2:
-            st.download_button("â¬‡ï¸ Download Resume (.md)", data=st.session_state.resume_md, file_name="Resume.md")
+            st.download_button("Download Resume (.md)", data=st.session_state.resume_md, file_name="Resume.md")
 
     with tab2:
         st.markdown(st.session_state.cover_letter_md)
@@ -790,13 +790,13 @@ if st.session_state.generation_complete:
         dc1, dc2 = st.columns(2)
         with dc1:
             st.download_button(
-                "â¬‡ï¸ Download Cover Letter (.docx)",
+                "Download Cover Letter (.docx)",
                 data=cl_docx,
                 file_name=f"Cover_Letter_{target_title.replace(' ', '_')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
         with dc2:
-            st.download_button("â¬‡ï¸ Download Cover Letter (.md)", data=st.session_state.cover_letter_md, file_name="Cover_Letter.md")
+            st.download_button("Download Cover Letter (.md)", data=st.session_state.cover_letter_md, file_name="Cover_Letter.md")
 
     with tab3:
         st.markdown(st.session_state.interview_md)
@@ -804,17 +804,16 @@ if st.session_state.generation_complete:
         dc1, dc2 = st.columns(2)
         with dc1:
             st.download_button(
-                "â¬‡ï¸ Download Interview Prep (.docx)",
+                "Download Interview Prep (.docx)",
                 data=int_docx,
                 file_name=f"Interview_Prep_{target_title.replace(' ', '_')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
         with dc2:
-            st.download_button("â¬‡ï¸ Download Interview Prep (.md)", data=st.session_state.interview_md, file_name="Interview_Prep.md")
+            st.download_button("Download Interview Prep (.md)", data=st.session_state.interview_md, file_name="Interview_Prep.md")
 
     st.divider()
-    if st.button("ðŸ”„ Start Over"):
+    if st.button("Start Over"):
         for key in STATE_DEFAULTS:
             st.session_state[key] = STATE_DEFAULTS[key]
         st.rerun()
-
