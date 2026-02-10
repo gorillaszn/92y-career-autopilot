@@ -327,8 +327,29 @@ SCORING GUIDE:
 - Below 40: Significant mismatch. Major requirements missing."""
 
 
-def prompt_resume(rank, years, industry, target_title, keywords, user_data, contact_info=None, gap_info=None):
+def prompt_resume(rank, years, industry, target_title, keywords, user_data, contact_info=None, gap_info=None, max_pages="2 pages (recommended)"):
     ctx = _context_block(rank, years, industry, target_title, keywords, user_data, contact_info, gap_info)
+    if "1 page" in max_pages:
+        page_rule = """PAGE LENGTH: STRICT 1 PAGE. This is non-negotiable.
+- Professional Summary: 2 sentences max.
+- Core Competencies: 4 items max.
+- Projects section: OMIT entirely.
+- Professional Experience: 3-4 bullets max. Pick only the highest-impact ones that match the JD.
+- Education: 1 line.
+Keep every bullet under 2 lines. Cut anything that doesn't directly match a JD keyword."""
+    elif "3+" in max_pages:
+        page_rule = """PAGE LENGTH: 3-5 pages. Use verbose federal resume style.
+- Include full KSA detail, 40 Hours/Week notations, supervisor placeholders.
+- Expand each bullet into 2-3 sentences with full STAR context.
+- Add additional duty positions and collateral assignments."""
+    else:
+        page_rule = """PAGE LENGTH: STRICT 2 PAGES MAX. This is non-negotiable.
+- If content exceeds 2 pages, cut the least relevant bullets first.
+- Prioritize bullets that directly match JD keywords.
+- Keep Professional Summary to 3 sentences.
+- Core Competencies: 5-6 items max.
+- Professional Experience: 5 bullets max. Each bullet should be 1-2 lines.
+- Compact is better than comprehensive. Recruiters spend 7 seconds on a resume."""
     if contact_info and contact_info.get("name"):
         name = contact_info["name"]
         city = contact_info.get("city") or "[City, State]"
@@ -344,6 +365,9 @@ def prompt_resume(rank, years, industry, target_title, keywords, user_data, cont
     proj_header = _project_header(industry)
     return f"""You are a Career Architect for U.S. Army 92Y veterans.
 {ctx}
+
+{page_rule}
+
 RESUME RULES:
 1. THE NO-REPEAT PROTOCOL:
    - CORE COMPETENCIES: Short keyword phrases with brief context.
@@ -927,6 +951,11 @@ with col2:
         ["Corporate (General)", "Defense Contractor", "Federal (USAJOBS)", "Tech / SaaS"],
     )
     target_title = st.text_input("Target Job Title", placeholder="e.g., Procurement Buyer II")
+    resume_pages = st.selectbox(
+        "Resume Length",
+        ["1 page", "2 pages (recommended)", "3+ pages (Federal only)"],
+        index=1,
+    )
     job_desc = st.text_area(
         "Paste Full Job Description",
         height=200,
@@ -1030,7 +1059,7 @@ if st.session_state.keywords_confirmed and not st.session_state.generation_compl
     try:
         progress.progress(10, text="Generating resume...")
         st.session_state.resume_md = call_model(
-            model, prompt_resume(rank, years, target_ind, target_title, kws, user_data, contact_info, gap_info)
+            model, prompt_resume(rank, years, target_ind, target_title, kws, user_data, contact_info, gap_info, resume_pages)
         )
     except Exception as e:
         errors.append(f"Resume: {e}")
