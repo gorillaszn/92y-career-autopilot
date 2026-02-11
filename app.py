@@ -100,6 +100,17 @@ def call_model(model, prompt: str, retries: int = 2) -> str:
     raise last_err
 
 
+def clean_markdown(text: str) -> str:
+    """Remove inline backticks and code fences that break resume formatting."""
+    if not text:
+        return text
+    # Remove inline backticks (single `)
+    text = text.replace("`", "")
+    # Remove any leftover fenced code blocks
+    text = re.sub(r"^```.*$", "", text, flags=re.MULTILINE)
+    return text.strip()
+
+
 # ============================================================
 # 5. KNOWLEDGE BASE
 # ============================================================
@@ -1112,25 +1123,25 @@ if st.session_state.keywords_confirmed and not st.session_state.generation_compl
     errors = []
     try:
         progress.progress(10, text="Generating resume...")
-        st.session_state.resume_md = call_model(
+        st.session_state.resume_md = clean_markdown(call_model(
             model, prompt_resume(rank, years, target_ind, target_title, kws, user_data, contact_info, gap_info, resume_pages)
-        )
+        ))
     except Exception as e:
         errors.append(f"Resume: {e}")
         st.session_state.resume_md = None
     try:
         progress.progress(35, text="Generating cover letter...")
-        st.session_state.cover_letter_md = call_model(
+        st.session_state.cover_letter_md = clean_markdown(call_model(
             model, prompt_cover_letter(rank, years, target_ind, target_title, kws, user_data, contact_info, gap_info, company)
-        )
+        ))
     except Exception as e:
         errors.append(f"Cover Letter: {e}")
         st.session_state.cover_letter_md = None
     try:
         progress.progress(60, text="Generating interview prep...")
-        st.session_state.interview_md = call_model(
+        st.session_state.interview_md = clean_markdown(call_model(
             model, prompt_interview(rank, years, target_ind, target_title, kws, user_data, contact_info, gap_info, company)
-        )
+        ))
     except Exception as e:
         errors.append(f"Interview Prep: {e}")
         st.session_state.interview_md = None
@@ -1248,7 +1259,7 @@ if st.session_state.generation_complete:
                                         resume_pages,
                                     ),
                                 )
-                                st.session_state.optimized_resume_md = optimized
+                                st.session_state.optimized_resume_md = clean_markdown(optimized)
                                 st.session_state.optimize_used = True
                                 # Re-run ATS analysis on optimized version
                                 try:
