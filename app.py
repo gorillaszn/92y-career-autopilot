@@ -31,6 +31,8 @@ STATE_DEFAULTS = {
     "company_name": None,
     "generated_at": None,
     "ats_analysis": None,
+    "optimized_resume_md": None,
+    "optimize_used": False,
 }
 for k, v in STATE_DEFAULTS.items():
     if k not in st.session_state:
@@ -521,6 +523,56 @@ Return ONLY valid JSON. No preamble, no markdown fences:
 SCORING: 90-100 = excellent keyword coverage, 70-89 = good, 50-69 = needs work, below 50 = poor."""
 
 
+def prompt_optimize_resume(current_resume, keywords, ats_data, industry, target_title, rank, max_pages="2 pages (recommended)"):
+    missing = ats_data.get("missing_keywords", [])
+    suggestions = ats_data.get("suggestions", [])
+    kw = "\n".join(f"  - {k}" for k in keywords)
+    missing_str = "\n".join(f"  - {m}" for m in missing) if missing else "  None"
+    suggest_str = "\n".join(f"  - {s}" for s in suggestions) if suggestions else "  None"
+    if "1 page" in max_pages:
+        page_note = "STRICT 1 PAGE. Cut aggressively to fit."
+    elif "3+" in max_pages:
+        page_note = "3-5 pages allowed (Federal style)."
+    else:
+        page_note = "STRICT 2 PAGES MAX. Do not exceed."
+    return f"""You are a Resume Optimization Specialist for military veterans.
+
+You have a resume that was already generated but has ATS gaps. Your job is to make this candidate
+look like the BEST POSSIBLE FIT for the role using ONLY their real experience and rank-appropriate duties.
+
+CURRENT RESUME:
+{current_resume}
+
+TARGET ROLE: {target_title}
+INDUSTRY: {industry}
+PAGE LIMIT: {page_note}
+
+ALL JD KEYWORDS (every one of these must appear in the optimized resume):
+{kw}
+
+MISSING KEYWORDS (these were NOT found in the current resume and MUST be added):
+{missing_str}
+
+ATS SUGGESTIONS TO APPLY:
+{suggest_str}
+
+OPTIMIZATION RULES:
+1. Keep the EXACT same contact info, name, and header format.
+2. Keep the same overall structure (sections, order).
+3. For each missing keyword: weave it naturally into an existing bullet or add a new one.
+   Do NOT fabricate experience. Use rank-appropriate 92Y duties to justify the keyword.
+   Example: If "Data Analytics" is missing for an E-6, add it as "Analyzed inventory data
+   across 3 warehouses to identify trends and reduce stock discrepancies by 15%."
+4. Strengthen weak bullets by adding metrics, JD keywords, and action verbs.
+5. Remove or compress any content that does NOT relate to the JD keywords.
+6. Ensure Core Competencies and Professional Experience still use DIFFERENT language (No-Repeat Protocol).
+7. Do NOT add a section explaining your changes. Output ONLY the optimized resume.
+8. The result must be a BETTER resume, not just the same resume with keywords stuffed in.
+   Every keyword should feel natural and backed by plausible {rank} experience.
+
+OUTPUT: The complete optimized resume in the same markdown format. Start immediately, no preamble."""
+
+
 # ============================================================
 # 7. DOCX EXPORT
 # ============================================================
@@ -1001,6 +1053,8 @@ if st.button("Step 1: Extract JD Keywords", type="secondary"):
                 st.session_state.cover_letter_md = None
                 st.session_state.interview_md = None
                 st.session_state.ats_analysis = None
+                st.session_state.optimized_resume_md = None
+                st.session_state.optimize_used = False
                 st.session_state.generated_at = None
                 st.rerun()
         except json.JSONDecodeError:
@@ -1144,8 +1198,19 @@ if st.session_state.generation_complete:
     for idx, tab_key in enumerate(available_tabs):
         with tabs[idx]:
             if tab_key == "resume":
-                st.markdown(st.session_state.resume_md)
-                resume_docx = markdown_to_docx(st.session_state.resume_md)
+                # Show optimized version if available, original otherwise
+                active_resume = st.session_state.optimized_resume_md or st.session_state.resume_md
+
+                # If optimized, show toggle
+                if st.session_state.optimized_resume_md:
+                    st.success("This resume has been optimized for maximum ATS compatibility.")
+                    show_original = st.checkbox("Show original (pre-optimization)", value=False, key="show_orig")
+                    if show_original:
+                        active_resume = st.session_state.resume_md
+                        st.caption("Showing original version.")
+
+                st.markdown(active_resume)
+                resume_docx = markdown_to_docx(active_resume)
                 docx_files["Resume"] = resume_docx
                 st.download_button(
                     "Download Resume (.docx)",
@@ -1153,6 +1218,51 @@ if st.session_state.generation_complete:
                     file_name=f"Resume_{company_slug}_{title_slug}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
+
+                # Optimize button (one-time use)
+                if (
+                    st.session_state.ats_analysis
+                    and not st.session_state.optimize_used
+                    and st.session_state.ats_analysis.get("overall_density_score", 100) < 95
+                ):
+                    st.divider()
+                    ats_score = st.session_state.ats_analysis.get("overall_density_score", 0)
+                    missing_ct = len(st.session_state.ats_analysis.get("missing_keywords", []))
+                    st.markdown(
+                        f"**ATS Score: {ats_score}%** | **{missing_ct} missing keyword(s)**. "
+                        "The optimizer will weave missing keywords into your resume naturally "
+                        "using your real experience and rank-appropriate duties."
+                    )
+                    if st.button("Optimize Resume", type="primary"):
+                        with st.spinner("Optimizing your resume for maximum ATS compatibility..."):
+                            try:
+                                optimized = call_model(
+                                    st.session_state.model,
+                                    prompt_optimize_resume(
+                                        st.session_state.resume_md,
+                                        st.session_state.keywords,
+                                        st.session_state.ats_analysis,
+                                        target_ind,
+                                        target_title,
+                                        rank,
+                                        resume_pages,
+                                    ),
+                                )
+                                st.session_state.optimized_resume_md = optimized
+                                st.session_state.optimize_used = True
+                                # Re-run ATS analysis on optimized version
+                                try:
+                                    new_ats_raw = call_model(
+                                        st.session_state.model,
+                                        prompt_ats_analysis(optimized, st.session_state.keywords),
+                                    )
+                                    st.session_state.ats_analysis = json.loads(new_ats_raw)
+                                except Exception:
+                                    pass
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Optimization failed: {e}")
+
             elif tab_key == "cover_letter":
                 st.markdown(st.session_state.cover_letter_md)
                 cl_docx = markdown_to_docx(st.session_state.cover_letter_md)
