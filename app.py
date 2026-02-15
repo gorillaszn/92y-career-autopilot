@@ -402,6 +402,8 @@ RESUME RULES:
    Civilianize ALL military terms using the translation map.
 5. If User Data is EMPTY or very thin, generate a "Top 10% Performer" resume from scratch
    based on Rank doctrine. Assume excellence: 100% accountability, zero loss, top ratings.
+6. Do NOT use backticks, code formatting, or monospace text anywhere. Plain markdown only.
+
 OUTPUT FORMAT (start immediately, no preamble, no "Here is the resume"):
 {header_block}
 
@@ -456,6 +458,7 @@ RULES:
 - Address the letter to "{company}" hiring team.
 - If there is an employment gap, frame it as a "Professional Development period" naturally.
 - Civilianize all military terms. Match the industry tone.
+- Do NOT use backticks, code formatting, or monospace text anywhere in the output.
 - Under 350 words. Do NOT repeat the resume verbatim. Use different examples and angles.
 OUTPUT (start immediately, no preamble):
 {cl_header}
@@ -480,7 +483,7 @@ def prompt_interview(rank, years, industry, target_title, keywords, user_data, c
     company = company_name if company_name and company_name != "Unknown Company" else "the company"
     return f"""You are an Interview Coach for a 92Y veteran applying to {company}.
 {ctx}
-Generate interview prep. Start immediately, no preamble.
+Generate interview prep. Start immediately, no preamble. Do NOT use backticks or code formatting anywhere.
 
 ## LIKELY INTERVIEW QUESTIONS
 
@@ -1275,8 +1278,8 @@ if st.session_state.generation_complete:
                                 st.error(f"Optimization failed: {e}")
 
             elif tab_key == "cover_letter":
-                st.markdown(st.session_state.cover_letter_md)
-                cl_docx = markdown_to_docx(st.session_state.cover_letter_md)
+                st.markdown(clean_markdown(st.session_state.cover_letter_md))
+                cl_docx = markdown_to_docx(clean_markdown(st.session_state.cover_letter_md))
                 docx_files["Cover_Letter"] = cl_docx
                 st.download_button(
                     "Download Cover Letter (.docx)",
@@ -1285,8 +1288,8 @@ if st.session_state.generation_complete:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
             elif tab_key == "interview":
-                st.markdown(st.session_state.interview_md)
-                int_docx = markdown_to_docx(st.session_state.interview_md)
+                st.markdown(clean_markdown(st.session_state.interview_md))
+                int_docx = markdown_to_docx(clean_markdown(st.session_state.interview_md))
                 docx_files["Interview_Prep"] = int_docx
                 st.download_button(
                     "Download Interview Prep (.docx)",
